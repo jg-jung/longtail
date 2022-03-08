@@ -63,7 +63,7 @@ public class ElasticService {
 	
 	/**
 	 * 메소드 상세 설명 : elasticsearch에 저장된 doc get
-	 *
+	 * 사용X TEST용
 	 */
 	public Object getAllDoc() {
 		logger.info("[/sample/elastic/all] Service Method");
@@ -106,7 +106,7 @@ public class ElasticService {
 	 * 범위검색(range), 조건, 페이징, 소팅 기능
 	 *
 	 */
-	public List<Map<String, Object>> getDoc(int pageStart,
+	public List<Map<String, Object>> getOrderListData(int pageStart,
 											int pageCnt,
 											String orderType1, 					//주문상태1 (전체, 요금확인중, 배송요청, 배차완료, 상차완료, 하차완료, 주문쉬소)
 											String orderType2, 					//주문상태2 (전체, 일반, 긴급)
@@ -121,8 +121,7 @@ public class ElasticService {
 											Long unloadingStartDateTime,		//하차일시 종료
 											Long unloadingEndDateTime) {		//하차일시 종료
 		
-		logger.info("[/sample/elastic/qry] Service Method");
-		Long currentTime = 0L;
+		logger.info("[getOrderListData] Service Method");
 		
 		List<Map<String, Object>> arrList = new ArrayList<>();
 		
@@ -148,17 +147,6 @@ public class ElasticService {
 			java.util.Date date = new Date();
 			
 			Long time = date.getTime();
-			
-			/*
-			System.out.println("Time in Milliseconds1: " + time);
-			System.out.println("Time in Milliseconds2: " + time + 7200000L);
-			 
-			Timestamp ts = new Timestamp(time);
-			Timestamp ts1 = new Timestamp(time + 7200000L);
-			
-			System.out.println("Current Time Stamp1: " + ts);
-			System.out.println("Current Time Stamp2: " + ts1);
-			*/
 			
 			QueryBuilder qb2 = QueryBuilders.rangeQuery("freight.loadingDateTime")
 											.gte((Long)time)
@@ -193,37 +181,11 @@ public class ElasticService {
 		if(searchType.equals("ORDERNUM") & !cs.checkString(searchText)) {
 			QueryBuilder qb4 = QueryBuilders.matchPhraseQuery("orderNumber", searchText);
 			orQuery.must(qb4);
-		}
-		
-		/*
-		JsonObject param = new JsonObject();
-		param.addProperty("id", "");	
-		Map<String, Object> apiRetMsg = (Map<String, Object>)RestApiUtil.getFreightMemberById("url", param);
-		String frieghtId = apiRetMsg.get("id").toString();
-		*/
-
-		//todo
-		//화주ID  김철수 책임님께 API 받아서 붙힘.
-		if(searchType.equals("FREIGHTID") & !cs.checkString(searchText)) {
-			/*
-			JsonObject param = new JsonObject();
-			param.addProperty("id", "");	
-			Map<String, Object> apiRetMsg = (Map<String, Object>)RestApiUtil.getFreightMemberById("url", param);
-			String freight = apiRetMsg.get("id").toString();
-			*/
-			QueryBuilder qb5 = QueryBuilders.matchPhraseQuery("freight.freightId", "");
+		}else if(searchType.equals("FREIGHTID") & !cs.checkString(searchText)) {
+			QueryBuilder qb5 = QueryBuilders.matchPhraseQuery("freightOwnerId", searchText);
 			orQuery.must(qb5);			
-		}
-		
-		//차주ID
-		if(searchType.equals("CAROWNERID") & !cs.checkString(searchText)) {
-			/*
-			JsonObject param = new JsonObject();
-			param.addProperty("id", "");	
-			Map<String, Object> apiRetMsg = (Map<String, Object>)RestApiUtil.getFreightMemberById("url", param);
-			String carOwnerId = apiRetMsg.get("CAROWNERID").toString();
-			*/
-			QueryBuilder qb6 = QueryBuilders.matchPhraseQuery("carOwnerId", "");
+		}else if(searchType.equals("CAROWNERID") & !cs.checkString(searchText)) {
+			QueryBuilder qb6 = QueryBuilders.matchPhraseQuery("carOwnerId", searchText);
 			orQuery.must(qb6);			
 		}
 		
@@ -281,60 +243,133 @@ public class ElasticService {
 			for(SearchHit s:searchResponse.getHits().getHits())
 			  {
 				  Map<String, Object> sourceMap = s.getSourceAsMap();
-				  /*
-				  Map<String, Object> carOwnerInfo = new HashMap<>();
-				  Map<String, Object> freightOwnerInfo = new HashMap<>();
-				  
-				  if(!carOwnerInfo.isEmpty()) {
-					  carOwnerInfo.put("carOwnerId", "wornr18");
-					  carOwnerInfo.put("carOwnerName", "정재국");
-					  carOwnerInfo.put("carNum", "172가 3414");
-					  carOwnerInfo.put("carOwnerPhoneNum", "010-6774-0919");
-					  sourceMap.put("carOwnerInfo", carOwnerInfo);
-					  
-				  }
-				  
-				  if(!carOwnerInfo.isEmpty()) {
-					  freightOwnerInfo.put("freightOwnerId", "wornr18");
-					  freightOwnerInfo.put("freightOwnerName", "정재국");
-					  freightOwnerInfo.put("freightOwnerPhoneNum", "010-6774-0919");
-					  sourceMap.put("freightOwnerInfo", freightOwnerInfo);					  
-				  }
-				  */
 				  arrList.add(sourceMap);
 			  }
-			
-			//List<Map<String, Object>> memberInfo = new ArrayList<>();	
-			
+
 			for(int i=0; i<arrList.size(); i++) {
+				//elasticsearch 에서 얻어온 화주, 차주 ID 디시젼 API호출용 파라메터
 				Map<String, Object> member = new HashMap<>();
 				member.put("resultCarOwnerId", arrList.get(i).get("carOwnerId").toString());
 				member.put("resultFreightOwnerId", arrList.get(i).get("freightOwnerId").toString());	
+
+				//디시젼 API로부터 데이터를 받았다고 가정 후 elasticsearch 데이터 안에 인입
+				Map<String, Object> carApiRetMsg = new HashMap<>();				
+				carApiRetMsg.put("carOwnerId", "id1");
+				carApiRetMsg.put("carOwnerPhone", "010-1234-1234");
+				carApiRetMsg.put("carOwnerName", "차주_1");
+
+				Map<String, Object> freightApiRetMsg = new HashMap<>();				
+				freightApiRetMsg.put("freightOwnerId", "id1");
+				freightApiRetMsg.put("freightOwnerPhone", "010-5678-5678");
+				freightApiRetMsg.put("freightOwnerName", "화주_1");
 				
-				//restTemplate 요청 carOwner 차주ID, freightOwnerId 화주ID
-//				JsonObject param = new JsonObject();
-//				param.addProperty("id", "");	
-//				Map<String, Object> carApiRetMsg = (Map<String, Object>)RestApiUtil.getFreightMemberById("url", param);
-//				Map<String, Object> freightApiRetMsg = (Map<String, Object>)RestApiUtil.getCarOwnerMemberById("url", param);
-
-
+				arrList.get(i).put("carOwnerInfo", carApiRetMsg);
+				arrList.get(i).put("freightOwnerInfo", freightApiRetMsg);
 			}
 			
-			
-			//return arrList;
 		}catch (ElasticsearchException e) { 
 			if (e.status() == RestStatus.NOT_FOUND) { 
 				logger.error("인덱스를 찾을 수 없습니다."); 
 			} 
 		} 
 		catch (IOException e) { 
-			logger.error("[Elastic search fail");
-			
+			logger.error("[Elastic search fail");			
 		}		
 		
 		return arrList;
 	}
+	
 
+	/**
+	 * 메소드 상세 설명 : elasticsearch에 저장된 도큐먼트 검색조건으로 주문번호로 상세 페이지 사용
+	 */
+	public List<Map<String, Object>> getOrderDetailData(String orderNumber) {					// 주문번호
+
+		logger.info("[getOrderDetailData] Service Method");
+		
+		List<Map<String, Object>> arrList = new ArrayList<>();
+		
+		// [Search Request 객체 선언 <index>]
+		SearchRequest searchRequest = new SearchRequest("orders");
+		SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+		
+		BoolQueryBuilder orQuery = QueryBuilders.boolQuery();
+
+		// 쿼리생성
+		// 주문상태1
+		if(!orderNumber.isEmpty()) {
+			QueryBuilder qb1 = QueryBuilders.matchPhraseQuery("orderNumber", orderNumber);
+			orQuery.must(qb1);			
+		}
+
+		sourceBuilder
+				.sort(SortBuilders.fieldSort("freight.loadingDateTime"))
+				.query(orQuery);
+
+
+		// 쿼리 Builder to Search Request 인입
+		searchRequest.source(sourceBuilder);
+		
+		// 쿼리 실행
+		try(RestHighLevelClient client = createConnection();){
+			SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+			
+			for(SearchHit s:searchResponse.getHits().getHits())
+			  {
+				  Map<String, Object> sourceMap = s.getSourceAsMap();
+				  arrList.add(sourceMap);
+			  }
+
+			for(int i=0; i<arrList.size(); i++) {
+				//elasticsearch 에서 얻어온 화주, 차주 ID 디시젼 API호출용 파라메터
+				Map<String, Object> member = new HashMap<>();
+				member.put("resultCarOwnerId", arrList.get(i).get("carOwnerId").toString());
+				member.put("resultFreightOwnerId", arrList.get(i).get("freightOwnerId").toString());	
+
+				//디시젼 API로부터 데이터를 받았다고 가정 후 elasticsearch 데이터 안에 인입
+				Map<String, Object> carApiRetMsg = new HashMap<>();				
+				carApiRetMsg.put("carOwnerId", "id1");
+				carApiRetMsg.put("carOwnerPhone", "010-1234-1234");
+				carApiRetMsg.put("carOwnerName", "차주_1");
+
+				Map<String, Object> freightApiRetMsg = new HashMap<>();				
+				freightApiRetMsg.put("freightOwnerId", "id1");
+				freightApiRetMsg.put("freightOwnerPhone", "010-5678-5678");
+				freightApiRetMsg.put("freightOwnerName", "화주_1");
+				
+				arrList.get(i).put("carOwnerInfo", carApiRetMsg);
+				arrList.get(i).put("freightOwnerInfo", freightApiRetMsg);
+			}
+			
+		}catch (ElasticsearchException e) { 
+			if (e.status() == RestStatus.NOT_FOUND) { 
+				logger.error("인덱스를 찾을 수 없습니다."); 
+			} 
+		} 
+		catch (IOException e) { 
+			logger.error("[Elastic search fail");			
+		}		
+		
+		return arrList;
+	}
+	
+	
+	
+	
+	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	/**
 	 * 메소드 상세 설명 : elasticsearch에 저장된 도큐먼트 검색조건으로 주문번호로 상세 페이지
 	 */

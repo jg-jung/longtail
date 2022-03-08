@@ -28,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 * 
 */
 @RestController
-@RequestMapping("/sample/elastic")
+@RequestMapping("/api/elastic")
 @RequiredArgsConstructor
 public class ElasticController {
 
@@ -45,11 +45,13 @@ public class ElasticController {
     }	
 	
 	/**
+	 * 메소드 상세 설명 : elasticsearch에 저장된 도큐먼트 검색조건으로 쿼링 메소드
 	 * 
-	 * 
-	 * */
-	@GetMapping("/qry")
-    public Object getqryData(@RequestParam(value="pageStart", required = false) int pageStart, 	
+	 * 범위검색(range), 조건, 페이징, 소팅 기능
+	 *
+	 */
+	@GetMapping("/order/list")
+    public Object getOrderListData(@RequestParam(value="pageStart", required = false) int pageStart, 	
     						 @RequestParam(value="pageCnt", required = false) int pageCnt, 	
     						 @RequestParam(value="orderType1", required = false) String orderType1, 											//주문상태1 (전체, 요금확인중, 배송요청, 배차완료, 상차완료, 하차완료, 주문쉬소)
     						 @RequestParam(value="orderType2", required = false) String orderType2, 											//주문상태2 (전체, 일반, 긴급)
@@ -63,10 +65,9 @@ public class ElasticController {
     						 @RequestParam(value="loadingEndtDateTime" , required = false) Long loadingEndtDateTime, 			//상차일시 시작
     						 @RequestParam(value="unloadingStartDateTime" , required = false) Long unloadingStartDateTime, 	//하차일시 종료
     						 @RequestParam(value="unloadingEndDateTime" , required = false) Long unloadingEndDateTime) {		//하차일시 종료
-		
-		logger.info("[/sample/elastic/qry] Controller Method");
-		
-		return elasticService.getDoc(pageStart,
+
+		logger.info("[getOrderListData] Controller Method");
+		return elasticService.getOrderListData(pageStart,
 									 pageCnt,
 									 orderType1, 					
 									 orderType2, 					
@@ -83,10 +84,39 @@ public class ElasticController {
     }
 	
 	/**
+	 * 메소드 상세 설명 : elasticsearch에 저장된 도큐먼트 검색조건으로 주문번호로 상세 페이지 사용
+	 */
+	@GetMapping("/order/detail")
+    public Object getOrderDetailData(@RequestParam(value="orderNumber") String orderNumber) {
+		
+		logger.info("[getOrderDetailData] Controller Method");		
+		return elasticService.getOrderDetailData(orderNumber);
+    }
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	/**
 	 * 
 	 * 
 	 * */
-	@GetMapping("/qry/masking")
+	@GetMapping("/order/mask/list")
     public Object getqryMaskingData(@RequestParam(value="orderId") String orderId) {
 		
 		logger.info("[/sample/elastic/qry] Controller Method");
